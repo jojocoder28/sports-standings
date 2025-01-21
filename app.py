@@ -1,9 +1,12 @@
 import os
 import pandas as pd
 import streamlit as st
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Constants
-ADMIN_PASSWORD = "admin123"  # Change this to a secure password
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 CSV_FILE = "sports_standings.csv"
 
 # Initialize data
