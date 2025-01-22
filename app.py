@@ -11,9 +11,30 @@ CSV_FILE = "sports_standings.csv"
 
 # Initialize data
 def initialize_data():
-    events = ["100m Run", "400m Run", "Long Jump", "High Jump"]
+    categories = {
+        "Boys A": ["100m Run", "200m Run", "Long Jump"],
+        "Girls A": ["100m Run", "High Jump"],
+        "Boys B": ["400m Run", "High Jump"],
+        "Girls B": ["200m Run", "Long Jump"],
+        "Boys C": ["100m Run", "400m Run"],
+        "Girls C": ["High Jump", "Long Jump"],
+        "CWSN": ["50m Walk", "Ball Throw"]
+    }
     if not os.path.exists(CSV_FILE):
-        data = {"Event": events, "1st Place": [""] * len(events), "2nd Place": [""] * len(events), "3rd Place": [""] * len(events)}
+        data = {
+            "Event": [],
+            "Category": [],
+            "1st Place": [],
+            "2nd Place": [],
+            "3rd Place": []
+        }
+        for category, events in categories.items():
+            for event in events:
+                data["Event"].append(event)
+                data["Category"].append(category)
+                data["1st Place"].append("")
+                data["2nd Place"].append("")
+                data["3rd Place"].append("")
         df = pd.DataFrame(data)
         df.to_csv(CSV_FILE, index=False)
 
@@ -37,8 +58,9 @@ def admin_page():
 
         # Edit standings
         st.subheader("Update Event Standings")
-        event = st.selectbox("Select Event:", df["Event"].tolist())
-        row = df[df["Event"] == event].index[0]
+        category = st.selectbox("Select Category:", df["Category"].unique().tolist())
+        event = st.selectbox("Select Event:", df[df["Category"] == category]["Event"].unique().tolist())
+        row = df[(df["Category"] == category) & (df["Event"] == event)].index[0]
         first_place = st.text_input("1st Place:", df.loc[row, "1st Place"])
         second_place = st.text_input("2nd Place:", df.loc[row, "2nd Place"])
         third_place = st.text_input("3rd Place:", df.loc[row, "3rd Place"])
@@ -53,59 +75,72 @@ def admin_page():
         # Add new events
         st.subheader("Add New Event")
         new_event = st.text_input("Enter new event name:")
+        new_category = st.selectbox("Select Category:", df["Category"].unique().tolist(), key=42)
         if st.button("Add Event"):
-            if new_event and new_event not in df["Event"].values:
-                new_row = pd.DataFrame({"Event": [new_event], "1st Place": [""], "2nd Place": [""], "3rd Place": [""]})
+            if new_event and not ((df["Event"] == new_event) & (df["Category"] == new_category)).any():
+                new_row = pd.DataFrame({
+                    "Event": [new_event],
+                    "Category": [new_category],
+                    "1st Place": [""],
+                    "2nd Place": [""],
+                    "3rd Place": [""]
+                })
                 df = pd.concat([df, new_row], ignore_index=True)
                 save_data(df)
-                st.success(f"Event '{new_event}' added successfully!")
-            elif new_event in df["Event"].values:
-                st.warning("This event already exists!")
+                st.success(f"Event '{new_event}' added successfully to category '{new_category}'!")
+            elif ((df["Event"] == new_event) & (df["Category"] == new_category)).any():
+                st.warning("This event already exists in the selected category!")
             else:
                 st.error("Event name cannot be empty.")
 
         # Delete events
         st.subheader("Delete Event")
-        delete_event = st.selectbox("Select Event to Delete:", df["Event"].tolist())
+        delete_category = st.selectbox("Select Category to Delete Event From:", df["Category"].unique().tolist())
+        delete_event = st.selectbox("Select Event to Delete:", df[df["Category"] == delete_category]["Event"].unique().tolist())
         if st.button("Delete Event"):
             if delete_event:
-                df = df[df["Event"] != delete_event]
+                df = df[~((df["Event"] == delete_event) & (df["Category"] == delete_category))]
                 save_data(df)
-                st.success(f"Event '{delete_event}' deleted successfully!")
+                st.success(f"Event '{delete_event}' deleted successfully from category '{delete_category}'!")
     else:
         if password:
             st.error("Incorrect password!")
 
 # User page
 def user_page():
-    st.title("🏆 Sports Event Leaderboard")
+    st.title("🏆 G.P. Sports for Primary Schools of D.H. North Circle, 2025")
+    st.subheader("Sarisha G.P.")
     st.subheader("View the latest standings for all events below.")
-    
+
     # Load data
     df = load_data()
 
-    # Style the leaderboard
-    def highlight_places(val, place):
-        if val:
-            if place == 1:
-                return "background-color: gold; color: black; font-weight: bold;"
-            elif place == 2:
-                return "background-color: silver; color: black; font-weight: bold;"
-            elif place == 3:
-                return "background-color: #cd7f32; color: black; font-weight: bold;"
-        return ""
+    # Display the leaderboard category-wise
+    categories = df["Category"].unique()
+    for category in categories:
+        st.write(f"### {category} Leaderboard")
+        category_df = df[df["Category"] == category]
 
-    styled_df = (
-        df.style
-        .applymap(lambda val: highlight_places(val, 1), subset=["1st Place"])
-        .applymap(lambda val: highlight_places(val, 2), subset=["2nd Place"])
-        .applymap(lambda val: highlight_places(val, 3), subset=["3rd Place"])
-    )
+        # Style the leaderboard
+        def highlight_places(val, place):
+            if val:
+                if place == 1:
+                    return "background-color: gold; color: black; font-weight: bold;"
+                elif place == 2:
+                    return "background-color: silver; color: black; font-weight: bold;"
+                elif place == 3:
+                    return "background-color: #cd7f32; color: black; font-weight: bold;"
+            return ""
 
-    # Display the leaderboard
-    st.write("### Leaderboard:")
-    st.dataframe(styled_df, use_container_width=True)
+        styled_df = (
+            category_df.style
+            .applymap(lambda val: highlight_places(val, 1), subset=["1st Place"])
+            .applymap(lambda val: highlight_places(val, 2), subset=["2nd Place"])
+            .applymap(lambda val: highlight_places(val, 3), subset=["3rd Place"])
+        )
 
+        # Display the leaderboard
+        st.write(styled_df)
 
 # Main app
 def main():
