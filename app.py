@@ -109,7 +109,7 @@ def admin_page():
 # User page
 def user_page():
     st.title("🏆 G.P. Sports for Primary Schools of D.H. North Circle, 2025")
-    st.subheader("Sarisha G.P.")
+    st.subheader("Khordo G.P.")
     st.subheader("View the latest standings for all events below.")
 
     # Load data
